@@ -20,76 +20,60 @@ void printTable(const char* table, int& row, int& column){
 
 char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row, int& column, bool& TrueOrFalse){
 
-	std::vector<std::pair<int, int>> possiblePos = { 
-		std::make_pair(1, 0),
+	std::array<std::pair<int, int>, 2> possiblePos = { 
 		std::make_pair(0, -1),
 		std::make_pair(-1, 0),
 	};
-	std::array<int, 3> remainPossiblePos{ 0, 1, 2 };
 
 	auto table = new char[row*column+1];
 	for(int yter=0; yter != row; ++yter){
 		for(int xter=0; xter != column; ++xter){
 			std::cin >> *(table + (yter*column) + xter);
-			if(xter == 0){
-				remainPossiblePos[2] = 3;
-			} 
-			if (xter == (row - 1)){
-				remainPossiblePos[0] = 3;
-			}
-			if(yter == 0){
-				remainPossiblePos[1] = 3;
-			}
-			for(const auto& pos : remainPossiblePos){
-				std::cout << pos;
-			}
-			std::cout << std::endl;
+			if(TrueOrFalse){
+				std::array<int, 2> remainPossiblePos;
+				if(xter == 0){
+					remainPossiblePos[1] = 2;
+				} 
 
-			switch(*(table + (yter*column) + xter)){
-				case 'B':
-					for(int pos : remainPossiblePos){
-						if(pos != 3){
-							int posX = xter + possiblePos[pos].first; 
-							int posY = yter + possiblePos[pos].second;
-							/* std::cout << "deref in B0" << posX << posY << std::endl; */
-							if(*(table + (posY*column) + posX) == '.'){
-								*(table + (posY*column) + posX) = '#';
-							/* std::cout << "deref in B1" << std::endl; */
-							}else if (*(table + (posY*column) + posX) == 'G'){
-								TrueOrFalse = false;
-							/* std::cout << "deref in B2" << std::endl; */
-								return table;
-							}
-						} 					
-					}
-					break;
-				case 'G':
-					for(const auto& pos: remainPossiblePos){
-						if(pos != 3){
-							if(*(table + ((yter + possiblePos[pos].second)*column) + (xter + possiblePos[pos].first)) == 'B'){
-								TrueOrFalse = false;
-								return table;
-							}
-							/* std::cout << "deref in G" << std::endl; */
+				if(yter == 0){
+					remainPossiblePos[0] = 2;
+				}
+
+				switch(*(table + (yter*column) + xter)){
+					case 'B':
+						for(int pos : remainPossiblePos){
+							if(pos != 2){
+								int posX = xter + possiblePos[pos].first; 
+								int posY = yter + possiblePos[pos].second;
+								if(*(table + (posY*column) + posX) == '.'){ *(table + (posY*column) + posX) = '#'; }else if (*(table + (posY*column) + posX) == 'G'){ TrueOrFalse = false; }
+							} 					
 						}
-					}
-					goodPersonLocation.push_back(std::make_pair(xter, yter));
-					break;
-				case '.':
-					if(yter != 0){
-						if(*(table + ((yter - 1)*column) + xter) == 'B')
-							*(table + (yter*column) + xter) = '#';
-					}
-					break;
+						break;
+					case 'G':
+						for(const auto& pos: remainPossiblePos){
+							if(pos != 2){
+								if(*(table + ((yter + possiblePos[pos].second)*column) + (xter + possiblePos[pos].first)) == 'B'){
+									TrueOrFalse = false;
+								}
+							}
+						}
+						goodPersonLocation.push_back(std::make_pair(xter, yter));
+						break;
+					case '.':
+						for(const auto& pos: remainPossiblePos){
+							if(pos != 2){
+								if(*(table + ((yter + possiblePos[pos].second)*column) + (xter + possiblePos[pos].first)) == 'B'){
+									*(table + (yter*column) + xter) = '#';
+								}
+								break;
+							}
+						}
+
+				}
 			}
 		}
 	}
-
-	if(*(table + row*column) == 'B'){
-		TrueOrFalse = false;
-		return table;
-	}
-	printTable(table, row, column);
+	printTable(  table,  row,  column);
 
 	return table;
 
@@ -98,51 +82,49 @@ char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row,
 
 void bruteForceTheArray(char* table, std::deque<std::pair<int, int>>& goodPersonLocation, int& row, int& column, bool& TrueOrFalse){
 
-	if((goodPersonLocation.size() == 0) && ((table + row*column) != nullptr) && (*(table + row*column) != 'B')){
+	if(goodPersonLocation.size() == 0){
 		TrueOrFalse = true;
 		return;
 	}
 
-	std::set<int> remainPossiblePos;
-	while((!goodPersonLocation.empty()) && TrueOrFalse){
-		auto location = goodPersonLocation.begin();
+	std::unique_ptr<bool[]> remainPossiblePos(new bool[column]{false});
+
+	for(auto location = goodPersonLocation.cbegin(); (location != goodPersonLocation.cend()) && TrueOrFalse; ++location){
 		int posX = location->first;
 		int posY = location->second;
 
 		if(*(table + (posY * column) + posX) == '.')
-			goodPersonLocation.pop_front();
+			continue;
 		else{
 			while(posY != row){
 
-				for(int iter=0; *(table + (posY * column) + posX + iter) != '#' && ((posX + iter) != column); ++iter){
-					remainPossiblePos.insert(posX + iter);
+				for(int iter=1; *(table + (posY * column) + posX + iter) != '#' && ((posX + iter) != column); ++iter){
+					if(remainPossiblePos[posX + iter - 1] != true) remainPossiblePos[posX + iter - 1] = true; else break;
 				}
 
-				for(int iter=0; *(table + (posY * column) + posX + iter) != '#' && ((posX + iter) != -1); --iter){
-					remainPossiblePos.insert(posX + iter);
+				for(int iter=-1; *(table + (posY * column) + posX + iter) != '#' && ((posX + iter) != -1); --iter){
+					if(remainPossiblePos[posX + iter - 1] != true) remainPossiblePos[posX + iter - 1] = true; else break;
 				}
 
 				while(posY != (row -1)){
-					for(auto& position: remainPossiblePos){
+					for(auto iter = 0; iter != column; ++iter){
+					auto position = remainPossiblePos[iter];
 						switch (*(table + ((posY + 1) * column) + position)){
 							case 'G':
 								*(table + ((posY + 1) * column) + position) = '.';
 								break;
 							case '#':
-								remainPossiblePos.erase(position);
+								position = false;
+								break;
 						}
 					}
 				}
 				++posY;
 			}
-			TrueOrFalse = (std::find(remainPossiblePos.cbegin(), remainPossiblePos.cend(), (column - 1)) != remainPossiblePos.cend()) ? true : false;
-			if(TrueOrFalse)
-				break;
-			goodPersonLocation.pop_front();
+			TrueOrFalse = (remainPossiblePos[column - 1] == (column - 1)) ? true : false;
 		}
 
 	}
-
 }
 
 int main(int argc, const char* argv[]){
