@@ -7,18 +7,13 @@
 #include <deque>
 #include <algorithm>
 
-void printTable(const char* table, int& row, int& column){
+struct Pos{
+	int first;
+	int second;
+};
 
-	for(int yter=0; yter != row; ++yter){
-		for(int xter=0; xter != column; ++xter){
-			std::cout << *(table + (yter*column) + xter);
-		}
-		std::cout << std::endl;
-	}
 
-}
-
-char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row, int& column, bool& TrueOrFalse){
+char* handleTable(Pos* goodPersonLocation, int& row, int& column, bool& TrueOrFalse, int& size){
 
 	std::array<std::pair<int, int>, 2> possiblePos = { 
 		std::make_pair(0, -1),
@@ -30,7 +25,7 @@ char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row,
 		for(int xter=0; xter != column; ++xter){
 			std::cin >> *(table + (yter*column) + xter);
 			if(TrueOrFalse){
-				std::array<int, 2> remainPossiblePos;
+				std::array<int, 2> remainPossiblePos{0, 1};
 				if(xter == 0){
 					remainPossiblePos[1] = 2;
 				} 
@@ -45,7 +40,14 @@ char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row,
 							if(pos != 2){
 								int posX = xter + possiblePos[pos].first; 
 								int posY = yter + possiblePos[pos].second;
-								if(*(table + (posY*column) + posX) == '.'){ *(table + (posY*column) + posX) = '#'; }else if (*(table + (posY*column) + posX) == 'G'){ TrueOrFalse = false; }
+								switch (*(table + (posY*column) + posX)){
+									case '.':
+										*(table + (posY*column) + posX) = '#'; 
+										break;
+									case 'G':
+										TrueOrFalse = false;
+										break;
+								}
 							} 					
 						}
 						break;
@@ -57,7 +59,7 @@ char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row,
 								}
 							}
 						}
-						goodPersonLocation.push_back(std::make_pair(xter, yter));
+						goodPersonLocation[size++] = { .first = xter, .second = yter };
 						break;
 					case '.':
 						for(const auto& pos: remainPossiblePos){
@@ -73,23 +75,22 @@ char* handleTable(std::deque<std::pair<int, int>>& goodPersonLocation, int& row,
 			}
 		}
 	}
-	printTable(  table,  row,  column);
 
 	return table;
 
 }
 
 
-void bruteForceTheArray(char* table, std::deque<std::pair<int, int>>& goodPersonLocation, int& row, int& column, bool& TrueOrFalse){
+void bruteForceTheArray(char* table, Pos* goodPersonLocation, int& row, int& column, bool& TrueOrFalse, int& size){
 
-	if(goodPersonLocation.size() == 0){
+	if(size == 0){
 		TrueOrFalse = true;
 		return;
 	}
 
-	std::unique_ptr<bool[]> remainPossiblePos(new bool[column]{false});
+	auto remainPossiblePos = new bool[column+1] {false};
 
-	for(auto location = goodPersonLocation.cbegin(); (location != goodPersonLocation.cend()) && TrueOrFalse; ++location){
+	for(auto location = goodPersonLocation; (location != goodPersonLocation + size) && TrueOrFalse; ++location){
 		int posX = location->first;
 		int posY = location->second;
 
@@ -98,30 +99,33 @@ void bruteForceTheArray(char* table, std::deque<std::pair<int, int>>& goodPerson
 		else{
 			while(posY != row){
 
-				for(int iter=1; *(table + (posY * column) + posX + iter) != '#' && ((posX + iter) != column); ++iter){
-					if(remainPossiblePos[posX + iter - 1] != true) remainPossiblePos[posX + iter - 1] = true; else break;
+				for(int iter=0; table[(posY*column) + (posX+iter)] != '#' && (posX + iter) != column; ++iter){
+					if ( remainPossiblePos[posX + iter ] == false ) remainPossiblePos[posX + iter] = true; 
+					else break;
 				}
 
-				for(int iter=-1; *(table + (posY * column) + posX + iter) != '#' && ((posX + iter) != -1); --iter){
-					if(remainPossiblePos[posX + iter - 1] != true) remainPossiblePos[posX + iter - 1] = true; else break;
+				for(int iter=0; table[(posY*column) + (posX+iter)] != '#' && (posX + iter) != -1; --iter){
+					if ( remainPossiblePos[posX + iter ] == false ) remainPossiblePos[posX + iter] = true; 
+					else break;
 				}
 
 				while(posY != (row -1)){
 					for(auto iter = 0; iter != column; ++iter){
-					auto position = remainPossiblePos[iter];
-						switch (*(table + ((posY + 1) * column) + position)){
-							case 'G':
-								*(table + ((posY + 1) * column) + position) = '.';
-								break;
-							case '#':
-								position = false;
-								break;
+						if(remainPossiblePos[iter]){
+							switch (*(table + ((posY + 1) * column) + iter)){
+								case 'G':
+									*(table + ((posY + 1) * column) + iter) = '.';
+									break;
+								case '#':
+									remainPossiblePos[iter] = false;
+									break;
+							}
 						}
 					}
 				}
 				++posY;
 			}
-			TrueOrFalse = (remainPossiblePos[column - 1] == (column - 1)) ? true : false;
+			TrueOrFalse = (remainPossiblePos[column - 1] == true) ? true : false;
 		}
 
 	}
@@ -137,10 +141,13 @@ int main(int argc, const char* argv[]){
 		std::cin >> row >> column;
 
 		bool TrueOrFalse = true;
-		std::deque<std::pair<int, int>> goodPersonLocation;
-		auto table = handleTable(goodPersonLocation, row, column, TrueOrFalse);
-		bruteForceTheArray(table, goodPersonLocation, row, column, TrueOrFalse);
+		auto size = 0;
+		// std::vector<std::pair<int, int>> goodPersonLocation;
+		auto goodPersonLocation = new Pos[row*column];
+		auto table = handleTable(goodPersonLocation, row, column, TrueOrFalse, size);
+		bruteForceTheArray(table, goodPersonLocation, row, column, TrueOrFalse, size);
 		std::cout << (TrueOrFalse ? "Yes" : "No" ) << std::endl;
 		delete [] table;
+		delete [] goodPersonLocation;
 	}
 }
