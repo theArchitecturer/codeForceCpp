@@ -6,6 +6,7 @@
 #include <set>
 #include <deque>
 #include <algorithm>
+#include "commonCommand.hpp"
 
 char *handleTable(int *goodPersonLocation, int &row, int &column, bool &TrueOrFalse, int &size)
 {
@@ -24,18 +25,18 @@ char *handleTable(int *goodPersonLocation, int &row, int &column, bool &TrueOrFa
                 std::array<int, 2> remainPossiblePos{0, 1};
                 if (xter == 0)
                 {
-                    remainPossiblePos[0] = 2;
+                    remainPossiblePos[1] = 2;
                 }
 
                 if (yter == 0)
                 {
-                    remainPossiblePos[1] = 2;
+                    remainPossiblePos[0] = 2;
                 }
 
-                switch (*(table + (yter * column) + xter))
+                switch (*(table + normalPosition))
                 {
                     case 'B':
-                        for (int pos : remainPossiblePos)
+                        for (const auto &pos : remainPossiblePos)
                         {
                             if (pos != 2)
                             {
@@ -51,7 +52,6 @@ char *handleTable(int *goodPersonLocation, int &row, int &column, bool &TrueOrFa
                                 }
                             }
                         }
-                        break;
                     case 'G':
                         for (const auto &pos : remainPossiblePos)
                         {
@@ -74,23 +74,22 @@ char *handleTable(int *goodPersonLocation, int &row, int &column, bool &TrueOrFa
                                 auto aroundPosition = normalPosition + possiblePos[pos];
                                 if (*(table + aroundPosition) == 'B')
                                 {
-                                    *(table + (yter * column) + xter) = '#';
+                                    *(table + normalPosition) = '#';
                                 }
-                                break;
                             }
                         }
                 }
             }
         }
     }
-
+    printArray(table, row, column);
     return table;
 }
 
 void bruteForceTheArray(char *table, int *goodPersonLocation, int &row, int &column, bool &TrueOrFalse, int &size)
 {
 
-    if (size == 0)
+    if(size == 0)
     {
         TrueOrFalse = true;
         return;
@@ -98,33 +97,43 @@ void bruteForceTheArray(char *table, int *goodPersonLocation, int &row, int &col
 
     auto remainPossiblePos = new bool[column + 1]{false};
 
-    for (auto yter = 0; yter != size && TrueOrFalse; ++yter)
+    for (auto yter = 0; (yter != size) && TrueOrFalse; ++yter)
     {
         auto location = goodPersonLocation[yter];
 
-        if (*(table + location) == '.')
-            continue;
+        if (*(table + location) == '.') continue;
         else
         {
             while (location < (row*column))
             {
+    // std::cout << "debugging" << std::endl;
                 auto posX = location % column;
-                auto beginRowPosition = location - posX;
+                auto beginRowPosition = location - posX; 
+                remainPossiblePos[posX] = true;
 
                 bool TrueInPos=false;
-                for(int iter=0, sharp_before=0; iter<column; ++iter){
+                for(int iter=0, sharp_before=0; iter < column; ++iter)
+                {
                     if(remainPossiblePos[iter] == true) TrueInPos = true;
-                    if(*(table + beginRowPosition + iter) =='#' || iter == (column - 1)){
-                        if (TrueInPos) {
-                            for(;sharp_before < iter; ++sharp_before){
-                                remainPossiblePos[sharp_before] = true;
-                            }
-                            sharp_before = ++iter;
-                        }else{
-                            sharp_before = ++iter;
+                    if(*(table + beginRowPosition + iter) =='#' || iter == (column - 1))
+                    {
+                        if (TrueInPos) 
+                        {
+                            for(;sharp_before < iter; ++sharp_before) remainPossiblePos[sharp_before] = true;
+                            sharp_before = iter+1;
+                            TrueInPos = false;
+
+                        }else
+                        {
+                            sharp_before = iter+1;
                         }
                     }
                 }
+                for(int iter=0; iter < column; ++iter)
+                {
+                    std::cout << (remainPossiblePos[iter] ? "true" : "false");
+                }
+                std::cout << std::endl;
 
                 while (location < (row - 1)*column)
                 {
@@ -139,7 +148,6 @@ void bruteForceTheArray(char *table, int *goodPersonLocation, int &row, int &col
                                     break;
                                 case '#':
                                     remainPossiblePos[iter] = false;
-                                    break;
                             }
                         }
                     }
@@ -164,7 +172,7 @@ int main(int argc, const char *argv[])
 
         bool TrueOrFalse = true;
         auto size = 0;
-        auto goodPersonLocation = new int[row * column];
+        auto goodPersonLocation = new int[row * column + 1];
         auto table = handleTable(goodPersonLocation, row, column, TrueOrFalse, size);
         bruteForceTheArray(table, goodPersonLocation, row, column, TrueOrFalse, size);
         std::cout << (TrueOrFalse ? "Yes" : "No") << std::endl;
